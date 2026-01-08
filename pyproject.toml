@@ -1,0 +1,20 @@
+[project]
+name = "inside-pot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pip>=25.3",
+    "build123d>=0.7.0",
+    "ocp-vscode>=3.0.0",
+    "periodictable>=1.7.0",
+    "pytest>=9.0.2",
+    "ipykernel",
+    "numpy>=2.4.0",
+    "stl>=0.0.3",
+    "pymat",
+]
+
+[tool.uv.sources]
+pymat = { git = "https://github.com/MorePET/py-mat.git", rev = "latest" }
