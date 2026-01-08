@@ -367,4 +367,13 @@ show(nema_phantom_filled)
 
 # %%
 export_step(nema_phantom_filled, "nema_phantom_filled.step")
+
+# %%
+# Save screenshot for README
+show(
+    nema_phantom_filled,
+    reset_camera=Camera.ISO
+)
+save_screenshot("images/nema_phantom.png")
+
 # %%

@@ -4,6 +4,8 @@ Parametric CAD models for medical imaging phantoms using [build123d](https://git
 
 ## Current Models
 
+![NEMA IEC Body Phantom](images/nema_phantom.png)
+
 - **NEMA IEC Body Phantom** (`nema_wagi.py`) - IEC 61675-1 standard body phantom with:
   - Hollow spheres (10-37mm) with filling tubing
   - Lung insert
