@@ -285,7 +285,7 @@ for i, (sphere, diameter, loc) in enumerate(zip(spheres, sphere_diameters, spher
     phantom_material.apply_to(hollow_sphere)
     hollow_spheres.append(hollow_sphere)
     # Save the moved inner sphere for filling visualization
-    inner_sphere.label = f"Sphere Filling {diameter}mm"
+    inner_sphere.label = f"Sphere {i} {diameter}mm Filling"
     phantom_filling_material.apply_to(inner_sphere)
     sphere_fillings.append(inner_sphere)
 show(*hollow_spheres, *sphere_fillings)
@@ -334,9 +334,14 @@ sphere_mounting_plate = sphere_mounting_plate - sphere_mounting_plate_screws
 show(*sphere_mounting_plate_screws, sphere_mounting_plate)
 
 # %%
+spheres_assemblies = []
+for i, (sphere, tubing) in enumerate(zip(spheres, hollow_tubing)):
+    spheres_assemblies.append(Compound(children=[sphere, tubing], label=f"{sphere.label}"))
 
-sphere_w_mount = [sphere_mounting_plate, *sphere_mounting_plate_screws, *hollow_tubing, *hollow_spheres, *sphere_tubing_screws]
-show(sphere_w_mount, nema_body, insert_shell)
+spheres_empty = Compound(children=[*spheres_assemblies], label="Spheres & Tubing")
+sphere_screws = Compound(children=[*sphere_mounting_plate_screws, *sphere_tubing_screws], label="Sphere Screws")
+spheres_w_mount = Compound(children=[sphere_mounting_plate, sphere_screws, spheres_empty], label="Spheres Mounted")
+show(spheres_w_mount)
 
 #%%
 # large filling screws
@@ -348,13 +353,15 @@ filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((filling_screw
 filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((-filling_screw_x_offset, filling_screw_y_offset, 0))))
 filling_screws.extend([screw.mirror(Plane.XY.offset(body_length/2)) for screw in filling_screws])
 filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((0, nema_body.bounding_box().max.Y - 15, filling_screws[-1].location.position.Z))))
-
-show(*filling_screws, nema_body, reset_camera=Camera.TOP)
+filling_screws = Compound(children=[*filling_screws], label="Filling Screws")
+show(filling_screws, nema_body, reset_camera=Camera.TOP)
 
 #%%
-nema_phantom_assembly = [nema_body, *filling_screws, *sphere_w_mount, insert_shell]
-nema_phantom_filled = [nema_phantom_assembly, *sphere_fillings, bkg_liquid]
+nema_phantom_assembly = Compound(children=[nema_body, spheres_w_mount, insert_shell, filling_screws], label="Nema Phantom Assembly")
+sphere_liquids = Compound(children=[*sphere_fillings], label="Sphere Liquids")
+nema_phantom_filled = Compound(children=[nema_phantom_assembly, sphere_liquids, bkg_liquid], label="Nema Phantom Filled")
 show(nema_phantom_filled)
 
 # %%
-export_step(nema_assembly, "nema_assembly.step")
+export_step(nema_phantom_filled, "nema_phantom_filled.step")
+# %%
