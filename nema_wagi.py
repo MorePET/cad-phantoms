@@ -77,6 +77,11 @@ screw_small_head_diameter = 5
 screw_small_head_height = 5
 screw_small_thread_diameter = 2.5
 
+# Filling screws placement
+filling_screw_y_offset = -body_bottom_depth + 35  # Y offset from center
+filling_screw_x_offset = 120  # X offset from center for side screws
+filling_screw_top_y_inset = 15  # Distance from top of body for top screw
+
 #%%
 
 # --- Material ---
@@ -345,14 +350,12 @@ show(spheres_w_mount)
 
 #%%
 # large filling screws
-# 2 at lower side and bottom of nema body
-filling_screw_y_offset = -body_bottom_depth + 35
-filling_screw_x_offset = 120
+# 2 at lower side and bottom of nema body, mirrored to other end, plus 1 at top
 filling_screws = []
-filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((filling_screw_x_offset, filling_screw_y_offset,  0))))
+filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((filling_screw_x_offset, filling_screw_y_offset, 0))))
 filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((-filling_screw_x_offset, filling_screw_y_offset, 0))))
-filling_screws.extend([screw.mirror(Plane.XY.offset(body_length/2)) for screw in filling_screws])
-filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((0, nema_body.bounding_box().max.Y - 15, filling_screws[-1].location.position.Z))))
+filling_screws.extend([screw.mirror(Plane.XY.offset(body_length / 2)) for screw in filling_screws])
+filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((0, nema_body.bounding_box().max.Y - filling_screw_top_y_inset, filling_screws[-1].location.position.Z))))
 filling_screws = Compound(children=[*filling_screws], label="Filling Screws")
 show(filling_screws, nema_body, reset_camera=Camera.TOP)
 
