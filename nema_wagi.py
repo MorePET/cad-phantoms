@@ -362,6 +362,9 @@ show(filling_screws, nema_body, reset_camera=Camera.TOP)
 #%%
 nema_phantom_assembly = Compound(children=[nema_body, spheres_w_mount, insert_shell, filling_screws], label="Nema Phantom Assembly")
 sphere_liquids = Compound(children=[*sphere_fillings], label="Sphere Liquids")
+bkg_liquid -= nema_phantom_assembly
+bkg_liquid -= sphere_liquids
+bkg_liquid -= filling_screws
 nema_phantom_filled = Compound(children=[nema_phantom_assembly, sphere_liquids, bkg_liquid], label="Nema Phantom Filled")
 show(nema_phantom_filled)
 
