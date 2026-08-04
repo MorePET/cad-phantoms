@@ -195,7 +195,10 @@ for i, diameter in enumerate(sphere_diameters):
 # Create spheres at their locations
 spheres = []
 for i, (diameter, loc) in enumerate(zip(sphere_diameters, sphere_locations)):
-    sphere = Solid.make_sphere(diameter / 2).moved(loc)
+    # `sphere_diameters` are INNER (fillable) diameters per NEMA NU 2 / IEC 61675-1,
+    # so the solid we build here — which becomes the OUTER surface once it is
+    # hollowed below — is the fillable radius plus one wall thickness.
+    sphere = Solid.make_sphere(diameter / 2 + sphere_wall_thickness).moved(loc)
     sphere.label = f"Sphere {diameter}mm"
     spheres.append(sphere)
     phantom_material.apply_to(sphere)
@@ -281,7 +284,9 @@ show(bkg_liquid)
 sphere_fillings = []
 hollow_spheres = []
 for i, (sphere, diameter, loc) in enumerate(zip(spheres, sphere_diameters, sphere_locations)):
-    inner_radius = diameter / 2 - sphere_wall_thickness
+    # The fillable radius IS the nominal radius (see above); the wall was added to
+    # the outer sphere rather than subtracted from the nominal one.
+    inner_radius = diameter / 2
     # Create inner sphere at the same location (use sphere_locations, not sphere.location which gets reset after cut)
     inner_sphere = Solid.make_sphere(inner_radius).moved(loc)
     # Cut to make hollow
