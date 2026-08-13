@@ -3,7 +3,7 @@ from build123d import *
 from ocp_vscode import *
 import copy
 import math
-from pymat import pmma, pe
+from pymat import Material, pmma, pe
 from pymat.factories import air, water
 
 # %%
@@ -13,7 +13,22 @@ from pymat.factories import air, water
 # =============================================================================
 
 phantom_material = pmma
-phantom_insert_material = air()
+
+# Lung insert filling. IEC 61675-1 / NEMA NU 2 specify the lung insert as a
+# LOW-ATOMIC-NUMBER material at an average density of 0.30 +- 0.10 g/cm^3;
+# the commercial inserts (Data Spectrum, PTW) are polystyrene foam, hence
+# (C8H8)n at the spec's nominal density.
+#
+# This was `air()` (0.0012 g/cm^3) — ~250x too light. The phantom exists to
+# measure attenuation and scatter through a thorax, so an air-filled insert
+# biases exactly the observables it is used to validate. Downstream consumers
+# inherit this material directly (see gerchowl/strata#1047).
+LUNG_INSERT_DENSITY = 0.30  # g/cm^3, IEC 61675-1 nominal (tolerance +-0.10)
+phantom_insert_material = Material(
+    "Lung Foam (IEC 61675-1)",
+    density=LUNG_INSERT_DENSITY,
+    formula="C8H8",
+)
 phantom_filling_material = water()
 
 # --- Body Phantom (Figure 7-1) ---
