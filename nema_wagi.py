@@ -1,8 +1,23 @@
 #%%
 from build123d import *
-from ocp_vscode import *
 import copy
 import math
+
+try:                                   # the OCP viewer is a dev convenience...
+    from ocp_vscode import *
+except ImportError:                    # ...and must not be required to build
+    # Headless: keep every show()/save_screenshot() call below untouched so the
+    # model reads the same in the viewer and in a container, and so no geometry
+    # line has to change to make the model importable.
+    def show(*_args, **_kwargs):
+        return None
+
+    def save_screenshot(*_args, **_kwargs):
+        return None
+
+    class Camera:                      # only ever used as a show() keyword
+        ISO = TOP = FRONT = None
+
 from pymat import Material, pmma, pe
 from pymat.factories import air, water
 
@@ -34,7 +49,11 @@ phantom_filling_material = water()
 # --- Body Phantom (Figure 7-1) ---
 # Overall dimensions
 body_height = 230  # Total height of phantom cross-section
-body_width = 150  # Width of flat bottom section
+# Figure 7-1 dimensions the "150" from the vertical centreline to the widest
+# point of the phantom, i.e. it is the HALF-width and the phantom is 300 mm
+# across. Reading it as the width of the flat bottom section put the corner-arc
+# centres at +-75 instead of +-73 and made the phantom 304 mm wide.
+body_half_width = 150  # Half-width, centreline to widest point (Figure 7-1)
 body_bottom_depth = 80  # Distance from horizontal center line to bottom
 body_length = 217
 body_interior_length = 193
@@ -114,12 +133,14 @@ filling_screw_top_y_inset = 15  # Distance from top of body for top screw
 # The shape is symmetric about the vertical center line
 
 # Key coordinates
-half_width = body_width / 2  # 75 mm
+half_width = body_half_width  # 150 mm, centreline to widest point
 bottom_y = -body_bottom_depth  # -80 mm
 
-# Corner arc centers (quarter-circle fillets tangent to bottom and sides)
-right_corner_center_x = half_width # 
-left_corner_center_x = -half_width #
+# Corner arc centers (quarter-circle fillets tangent to bottom and sides).
+# The arc is tangent to the flat bottom below its centre and reaches the widest
+# point of the phantom beside it, so the centre sits one radius in from each.
+right_corner_center_x = half_width - body_corner_radius  # 73 mm
+left_corner_center_x = -right_corner_center_x
 corner_center_y = bottom_y + body_corner_radius  # -3
 
 # Bottom line goes from left corner tangent point to right corner tangent point
@@ -388,15 +409,55 @@ bkg_liquid -= filling_screws
 nema_phantom_filled = Compound(children=[nema_phantom_assembly, sphere_liquids, bkg_liquid], label="Nema Phantom Filled")
 show(nema_phantom_filled)
 
-# %%
-export_step(nema_phantom_filled, "nema_phantom_filled.step")
 
 # %%
-# Save screenshot for README
-show(
-    nema_phantom_filled,
-    reset_camera=Camera.ISO
-)
-save_screenshot("images/nema_phantom.png")
+# =============================================================================
+# Compartments
+# =============================================================================
+# The named solids above, as a mapping the downstream simulation chain can walk
+# without knowing how the model is assembled: each entry is one physically
+# distinct volume with one material. `export_phantoms.py` writes one STEP/STL
+# per entry, and the voxelizer turns them into a material grid plus the
+# per-compartment masks that drive the activity maps.
+#
+# `fillable` marks the compartments that hold radioactive liquid — the union of
+# those is the support of the simulated source.
 
-# %%
+def compartments():
+    """name -> (solid, material, fillable) for every distinct volume.
+
+    Caveat for STEP export: building `nema_phantom_filled` above subtracts these
+    same solids from one another in place (`bkg_liquid -= nema_phantom_assembly`
+    and friends), which leaves most of them in a state the OCCT STEP writer
+    rejects even though they stay geometrically valid and mesh cleanly. STL
+    export and voxelization are unaffected. A consumer that needs STEP must take
+    a `BRepBuilderAPI_Copy` of the solid first -- `export_phantoms.py` does, and
+    `copy.deepcopy` is not enough.
+    """
+    out = {
+        "background_liquid": (bkg_liquid, phantom_filling_material, True),
+        "body_shell": (nema_body, phantom_material, False),
+        # The insert is two volumes: a PMMA shell around a low-density foam
+        # core. bkg_liquid subtracts the whole outer cylinder (see the
+        # `- insert` above), so the core is genuinely void of water and has to
+        # be carried here or it would rasterize as air.
+        "lung_insert_shell": (insert_shell, phantom_material, False),
+        "lung_insert_filling": (insert_filling, phantom_insert_material, False),
+        "sphere_mounting_plate": (sphere_mounting_plate, phantom_material, False),
+        "filling_screws": (filling_screws, screw_material, False),
+    }
+    for i, (diameter, filling) in enumerate(zip(sphere_diameters, sphere_fillings)):
+        out[f"sphere_{diameter}mm"] = (filling, phantom_filling_material, True)
+    for i, (diameter, wall) in enumerate(zip(sphere_diameters, hollow_spheres)):
+        out[f"sphere_{diameter}mm_wall"] = (wall, phantom_material, False)
+    for diameter, tube in zip(sphere_diameters, hollow_tubing):   # one tube per sphere
+        out[f"sphere_tube_{diameter}mm"] = (tube, phantom_material, False)
+    return out
+
+
+if __name__ == "__main__":
+    # Only when run as a script: importing this module must not overwrite the
+    # tracked STEP export or the README screenshot.
+    export_step(nema_phantom_filled, "nema_phantom_filled.step")
+    show(nema_phantom_filled, reset_camera=Camera.ISO)
+    save_screenshot("images/nema_phantom.png")

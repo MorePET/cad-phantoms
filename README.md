@@ -12,6 +12,10 @@ Parametric CAD models for medical imaging phantoms using [build123d](https://git
   - Mounting plate with screws
   - Material assignments via [pymat](https://github.com/MorePET/py-mat)
 
+- **NEMA NU 2-2018 Scatter Phantom** (`nema_scatter.py`) - the count-rate phantom used for
+  scatter fraction, count losses and NECR (NU 2-2018 section 4.3.2): Ø203 × 700 mm
+  polyethylene cylinder with a 6.4 mm bore at 45 mm radial offset and a line source insert.
+
 ## Setup
 
 ### Prerequisites
@@ -59,14 +63,78 @@ uv sync
 - **Clipping planes**: Use `clip_slider_0/1/2` parameters in `show()` to cut through the model
 - **Colors**: Set `clip_object_colors=True` to see material colors in cross-sections
 
+## Headless / Container Workflow
+
+The VS Code viewer flow above is for interactive modeling. For anything scripted -
+exporting geometry for a simulation, or running the tests - use the container image
+instead; it needs no display and no local Python environment.
+
+```bash
+podman build -t cad-phantoms:main -f Containerfile .
+
+# run the test suite
+podman run --rm -v "$PWD":/work -w /work cad-phantoms:main -m pytest -q
+
+# export the phantoms
+podman run --rm -v "$PWD":/work -w /work cad-phantoms:main export_phantoms.py --out build/
+```
+
+Building the body phantom takes ~30-60 s (it is a lot of geometry), so the tests build
+each phantom once per session rather than once per test.
+
+## World Frame Convention
+
+Both phantom models are built in a natural CAD frame: millimetres, phantom axis along
++z. The simulation's world frame is different - the scanner axis is world **y** - so
+`placement.py` maps every phantom from its CAD frame into the world frame before
+anything is exported. The map is a proper +90° rotation about x, `(x, y, z)_cad ->
+(x, -z, y)_world`, followed by a phantom-specific translation (e.g. `body_phantom_placement()`
+puts the sphere plane at world y = 0, per NU 2-2018 section 7.3.3).
+
+Because the export already happens in the world frame, the simulation configs that
+consume it carry an identity rotation and translation - there is no frame conversion left
+to get wrong, and the attenuation grid, source cloud and activity maps all come from one
+rasterization instead of independently re-deriving the same transform.
+
+## Exporting Phantoms for Simulation
+
+`export_phantoms.py` writes one STEP/STL file per compartment, plus a `manifest.json`,
+for a downstream voxelizer:
+
+```bash
+python3 export_phantoms.py --out build/ [--phantom nemaiq|nemasp|nemaabut|all] \
+    [--formats step,stl] [--abut-end head|foot]
+```
+
+- `nemaiq` - the body phantom alone
+- `nemasp` - the scatter phantom alone
+- `nemaabut` - the body phantom plus the scatter phantom abutted at its head or foot end
+  (NU 2-2018 section 7.3.3), in one compartment set
+
+Output layout, per phantom, under `<out>/<phantom>/`:
+
+```
+<out>/<phantom>/
+├── manifest.json          # frame, units, and per-compartment name/material/volume/bbox/files
+├── <compartment>.step      # one STEP file per compartment, in mm, already in the world frame
+└── <compartment>.stl       # one STL file per compartment
+```
+
+`build/` is scratch output and is not tracked.
+
 ## Project Structure
 
 ```
 cad-phantoms/
-├── nema_wagi.py          # NEMA IEC Body Phantom model
-├── pyproject.toml        # Project dependencies
-├── uv.lock               # Locked dependencies
-└── *.step                # Exported CAD files (optional)
+├── nema_wagi.py           # NEMA IEC Body Phantom model
+├── nema_scatter.py        # NEMA NU 2-2018 scatter phantom model
+├── placement.py           # CAD-to-world-frame placement of both phantoms
+├── export_phantoms.py     # CLI: export compartments (STEP/STL + manifest) for the voxelizer
+├── tests/                 # pytest suite (run inside the container)
+├── Containerfile          # headless build/test/export image
+├── pyproject.toml         # Project dependencies
+├── uv.lock                # Locked dependencies
+└── *.step                 # Exported CAD files (optional)
 ```
 
 ## Dependencies
