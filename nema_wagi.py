@@ -49,7 +49,11 @@ phantom_filling_material = water()
 # --- Body Phantom (Figure 7-1) ---
 # Overall dimensions
 body_height = 230  # Total height of phantom cross-section
-body_width = 150  # Width of flat bottom section
+# Figure 7-1 dimensions the "150" from the vertical centreline to the widest
+# point of the phantom, i.e. it is the HALF-width and the phantom is 300 mm
+# across. Reading it as the width of the flat bottom section put the corner-arc
+# centres at +-75 instead of +-73 and made the phantom 304 mm wide.
+body_half_width = 150  # Half-width, centreline to widest point (Figure 7-1)
 body_bottom_depth = 80  # Distance from horizontal center line to bottom
 body_length = 217
 body_interior_length = 193
@@ -129,12 +133,14 @@ filling_screw_top_y_inset = 15  # Distance from top of body for top screw
 # The shape is symmetric about the vertical center line
 
 # Key coordinates
-half_width = body_width / 2  # 75 mm
+half_width = body_half_width  # 150 mm, centreline to widest point
 bottom_y = -body_bottom_depth  # -80 mm
 
-# Corner arc centers (quarter-circle fillets tangent to bottom and sides)
-right_corner_center_x = half_width #
-left_corner_center_x = -half_width #
+# Corner arc centers (quarter-circle fillets tangent to bottom and sides).
+# The arc is tangent to the flat bottom below its centre and reaches the widest
+# point of the phantom beside it, so the centre sits one radius in from each.
+right_corner_center_x = half_width - body_corner_radius  # 73 mm
+left_corner_center_x = -right_corner_center_x
 corner_center_y = bottom_y + body_corner_radius  # -3
 
 # Bottom line goes from left corner tangent point to right corner tangent point
