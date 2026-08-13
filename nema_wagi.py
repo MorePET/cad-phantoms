@@ -424,7 +424,16 @@ show(nema_phantom_filled)
 # those is the support of the simulated source.
 
 def compartments():
-    """name -> (solid, material, fillable) for every distinct volume."""
+    """name -> (solid, material, fillable) for every distinct volume.
+
+    Caveat for STEP export: building `nema_phantom_filled` above subtracts these
+    same solids from one another in place (`bkg_liquid -= nema_phantom_assembly`
+    and friends), which leaves most of them in a state the OCCT STEP writer
+    rejects even though they stay geometrically valid and mesh cleanly. STL
+    export and voxelization are unaffected. A consumer that needs STEP must take
+    a `BRepBuilderAPI_Copy` of the solid first -- `export_phantoms.py` does, and
+    `copy.deepcopy` is not enough.
+    """
     out = {
         "background_liquid": (bkg_liquid, phantom_filling_material, True),
         "body_shell": (nema_body, phantom_material, False),
