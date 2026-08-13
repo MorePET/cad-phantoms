@@ -1,8 +1,23 @@
 #%%
 from build123d import *
-from ocp_vscode import *
 import copy
 import math
+
+try:                                   # the OCP viewer is a dev convenience...
+    from ocp_vscode import *
+except ImportError:                    # ...and must not be required to build
+    # Headless: keep every show()/save_screenshot() call below untouched so the
+    # model reads the same in the viewer and in a container, and so no geometry
+    # line has to change to make the model importable.
+    def show(*_args, **_kwargs):
+        return None
+
+    def save_screenshot(*_args, **_kwargs):
+        return None
+
+    class Camera:                      # only ever used as a show() keyword
+        ISO = TOP = FRONT = None
+
 from pymat import Material, pmma, pe
 from pymat.factories import air, water
 
@@ -118,7 +133,7 @@ half_width = body_width / 2  # 75 mm
 bottom_y = -body_bottom_depth  # -80 mm
 
 # Corner arc centers (quarter-circle fillets tangent to bottom and sides)
-right_corner_center_x = half_width # 
+right_corner_center_x = half_width #
 left_corner_center_x = -half_width #
 corner_center_y = bottom_y + body_corner_radius  # -3
 
@@ -388,15 +403,46 @@ bkg_liquid -= filling_screws
 nema_phantom_filled = Compound(children=[nema_phantom_assembly, sphere_liquids, bkg_liquid], label="Nema Phantom Filled")
 show(nema_phantom_filled)
 
-# %%
-export_step(nema_phantom_filled, "nema_phantom_filled.step")
 
 # %%
-# Save screenshot for README
-show(
-    nema_phantom_filled,
-    reset_camera=Camera.ISO
-)
-save_screenshot("images/nema_phantom.png")
+# =============================================================================
+# Compartments
+# =============================================================================
+# The named solids above, as a mapping the downstream simulation chain can walk
+# without knowing how the model is assembled: each entry is one physically
+# distinct volume with one material. `export_phantoms.py` writes one STEP/STL
+# per entry, and the voxelizer turns them into a material grid plus the
+# per-compartment masks that drive the activity maps.
+#
+# `fillable` marks the compartments that hold radioactive liquid — the union of
+# those is the support of the simulated source.
 
-# %%
+def compartments():
+    """name -> (solid, material, fillable) for every distinct volume."""
+    out = {
+        "background_liquid": (bkg_liquid, phantom_filling_material, True),
+        "body_shell": (nema_body, phantom_material, False),
+        # The insert is two volumes: a PMMA shell around a low-density foam
+        # core. bkg_liquid subtracts the whole outer cylinder (see the
+        # `- insert` above), so the core is genuinely void of water and has to
+        # be carried here or it would rasterize as air.
+        "lung_insert_shell": (insert_shell, phantom_material, False),
+        "lung_insert_filling": (insert_filling, phantom_insert_material, False),
+        "sphere_mounting_plate": (sphere_mounting_plate, phantom_material, False),
+        "filling_screws": (filling_screws, screw_material, False),
+    }
+    for i, (diameter, filling) in enumerate(zip(sphere_diameters, sphere_fillings)):
+        out[f"sphere_{diameter}mm"] = (filling, phantom_filling_material, True)
+    for i, (diameter, wall) in enumerate(zip(sphere_diameters, hollow_spheres)):
+        out[f"sphere_{diameter}mm_wall"] = (wall, phantom_material, False)
+    for diameter, tube in zip(sphere_diameters, hollow_tubing):   # one tube per sphere
+        out[f"sphere_tube_{diameter}mm"] = (tube, phantom_material, False)
+    return out
+
+
+if __name__ == "__main__":
+    # Only when run as a script: importing this module must not overwrite the
+    # tracked STEP export or the README screenshot.
+    export_step(nema_phantom_filled, "nema_phantom_filled.step")
+    show(nema_phantom_filled, reset_camera=Camera.ISO)
+    save_screenshot("images/nema_phantom.png")
