@@ -21,7 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # pyproject.toml asks for `rev = "latest"`, which an image must not.
 ARG PYMAT_REV=a948f9ab313ff36a65c88740a7df581e8de855ed
 RUN pip install --no-cache-dir \
-        "build123d>=0.7.0" \
+        # Pinned for the same reason as py-mat below: build123d 0.12.0 changed the
+        # material API to require FinishedMaterial where pymat passes Material, which
+        # breaks every solid this repo builds. 0.11.1 is the last version that works.
+        "build123d==0.11.1" \
         "numpy>=2.4.0" \
         "pytest>=8.0" \
         "git+https://github.com/MorePET/py-mat.git@${PYMAT_REV}"
