@@ -56,6 +56,25 @@ uv sync
 3. Run subsequent cells to build the geometry
 4. Each `show()` call updates the 3D viewer
 
+### Viewing the scatter phantom
+
+`nema_scatter.py` is a plain library module, not a cell script: it has no `#%%`
+markers and never calls `show()`, so opening it in VS Code renders nothing. That
+is deliberate. It builds its geometry inside `build()` rather than at import, so
+the tests and the exporter do not pay for it.
+
+To see it in the viewer, run this in the interactive window:
+
+```python
+from ocp_vscode import show
+import nema_scatter
+
+show(*[solid for solid, _material, _fillable in nema_scatter.compartments().values()])
+```
+
+`nema_wagi.py` works the other way round, building at import and showing as it
+goes, which is why it is stepped through cell by cell.
+
 ### Tips
 
 - **Run cells individually**: Click the "Run Cell" button or use `Shift+Enter`
