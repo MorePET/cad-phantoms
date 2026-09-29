@@ -16,7 +16,7 @@ except ImportError:                    # ...and must not be required to build
         return None
 
     class Camera:                      # only ever used as a show() keyword
-        ISO = TOP = FRONT = None
+        ISO = TOP = None
 
 from pymat import Material, pmma, pe
 from pymat.factories import air, water
@@ -446,9 +446,9 @@ def compartments():
         "sphere_mounting_plate": (sphere_mounting_plate, phantom_material, False),
         "filling_screws": (filling_screws, screw_material, False),
     }
-    for i, (diameter, filling) in enumerate(zip(sphere_diameters, sphere_fillings)):
+    for diameter, filling in zip(sphere_diameters, sphere_fillings):
         out[f"sphere_{diameter}mm"] = (filling, phantom_filling_material, True)
-    for i, (diameter, wall) in enumerate(zip(sphere_diameters, hollow_spheres)):
+    for diameter, wall in zip(sphere_diameters, hollow_spheres):
         out[f"sphere_{diameter}mm_wall"] = (wall, phantom_material, False)
     for diameter, tube in zip(sphere_diameters, hollow_tubing):   # one tube per sphere
         out[f"sphere_tube_{diameter}mm"] = (tube, phantom_material, False)
