@@ -291,8 +291,11 @@ show(insert_shell, nema_body, sphere_mounting_plate)
 #%%
 # screws as cylinders
 # large screw
+# The thread is its own solid because it is also the shape of the threaded
+# filling hole it sits in (see the filling screws below).
+large_screw_thread = Solid.make_cylinder(screw_large_thread_diameter / 2, face_thickness).moved(Location((0, 0, -face_thickness)))
 large_screw = Compound([Solid.make_cylinder(screw_large_head_diameter / 2, screw_large_head_height).moved(Location((0, 0, 0))), 
-                        Solid.make_cylinder(screw_large_thread_diameter / 2, face_thickness).moved(Location((0, 0, -face_thickness)))])
+                        large_screw_thread])
 large_screw.label = "Large Screw"
 screw_material.apply_to(large_screw)
 show(large_screw)
@@ -392,12 +395,31 @@ show(spheres_w_mount)
 #%%
 # large filling screws
 # 2 at lower side and bottom of nema body, mirrored to other end, plus 1 at top
-filling_screws = []
-filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((filling_screw_x_offset, filling_screw_y_offset, 0))))
-filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((-filling_screw_x_offset, filling_screw_y_offset, 0))))
-filling_screws.extend([screw.mirror(Plane.XY.offset(body_length / 2)) for screw in filling_screws])
-filling_screws.append(large_screw.mirror(Plane.XY).moved(Location((0, nema_body.bounding_box().max.Y - filling_screw_top_y_inset, filling_screws[-1].location.position.Z))))
-filling_screws = Compound(children=[*filling_screws], label="Filling Screws")
+filling_port_top_y = nema_body.bounding_box().max.Y - filling_screw_top_y_inset
+
+
+def at_filling_ports(part):
+    """`part` (built head-up at the origin) placed at each of the 5 filling ports.
+
+    One placement for the screws and for the holes they sit in, so the two
+    cannot drift apart.
+    """
+    placed = [part.mirror(Plane.XY).moved(Location((x, filling_screw_y_offset, 0)))
+              for x in (filling_screw_x_offset, -filling_screw_x_offset)]
+    placed.extend([p.mirror(Plane.XY.offset(body_length / 2)) for p in placed])
+    placed.append(part.mirror(Plane.XY).moved(Location((0, filling_port_top_y, 0))))
+    return placed
+
+
+filling_screws = Compound(children=at_filling_ports(large_screw), label="Filling Screws")
+
+# Threaded filling holes: each screw's thread (10 mm x 12 mm) passes through the
+# full 12 mm of an end cap, so the body needs a hole of exactly that shape, or the
+# body and the screw both claim pi x 5^2 x 12 = 942.5 mm^3 per port, 4712.4 mm^3
+# for all five (gerchowl/strata#1497 R6, MorePET/cad-phantoms#8). The hole is the
+# thread's envelope: like the screw, the thread form itself is not modelled.
+filling_holes = at_filling_ports(large_screw_thread)
+nema_body = nema_body - filling_holes
 show(filling_screws, nema_body, reset_camera=Camera.TOP)
 
 #%%
