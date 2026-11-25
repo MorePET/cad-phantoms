@@ -8,7 +8,7 @@ configs never have to apply a rotation or translation of their own.
 
 Usage:
     python3 export_phantoms.py --out build/ \\
-        [--phantom nemaiq|nemasp|nemaabut|all] \\
+        [--phantom nemaiq|nemasp|nemaabut|nu4|all] \\
         [--formats step,stl] \\
         [--abut-end head|foot]
 """
@@ -20,11 +20,11 @@ from build123d import export_step, export_stl
 from build123d.topology.shape_core import downcast
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
 
+import nema_nu4
 import nema_scatter
-import nema_wagi
 import placement
 
-PHANTOM_NAMES = ("nemaiq", "nemasp", "nemaabut")
+PHANTOM_NAMES = ("nemaiq", "nemasp", "nemaabut", "nu4")
 FORMAT_EXTENSIONS = {"step": "step", "stl": "stl"}
 
 
@@ -55,6 +55,14 @@ def _sanitize(compartments):
 
 def _build_compartments(phantom, abut_end):
     """name -> (solid, material, fillable), already placed in the world frame."""
+    if phantom == "nu4":
+        return _sanitize(
+            placement.place(nema_nu4.compartments(), placement.nu4_placement(nema_nu4.OVERALL_LENGTH)))
+
+    # nema_wagi builds the body phantom at import (30-60 s) and calls the OCP
+    # viewer when ocp_vscode is installed, so it is imported only when needed.
+    import nema_wagi
+
     if phantom == "nemaiq":
         return _sanitize(
             placement.place(nema_wagi.compartments(), placement.body_phantom_placement()))
@@ -142,6 +150,15 @@ def export_phantom(phantom, out, formats, abut_end):
         "abut_end": abut_end if phantom == "nemaabut" else None,
         "compartments": entries,
     }
+    if phantom == "nu4":
+        # Cylinders only: the dimensions let the voxelizer rasterise exactly.
+        # They are in the CAD frame (axis +z); "placement" maps them to world.
+        manifest["parameters"] = nema_nu4.parameters()
+        manifest["placement"] = {
+            "rotation_deg_about_x": 90.0,
+            "translation_mm": [0.0, nema_nu4.OVERALL_LENGTH / 2.0, 0.0],
+            "map": "(x, y, z)_cad -> (x, -z, y)_world + translation",
+        }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     n_fillable = sum(1 for e in entries if e["fillable"])

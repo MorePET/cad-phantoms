@@ -16,6 +16,11 @@ Parametric CAD models for medical imaging phantoms using [build123d](https://git
   scatter fraction, count losses and NECR (NU 2-2018 section 4.3.2): Ø203 × 700 mm
   polyethylene cylinder with a 6.4 mm bore at 45 mm radial offset and a line source insert.
 
+- **NEMA NU 4-2008 Image-Quality Phantom** (`nema_nu4.py`) - the small-animal image-quality
+  phantom: Ø33 × 63 mm PMMA with a 30 × 30 mm uniform chamber, five hot rods of 1–5 mm × 20 mm,
+  and an air and a water cold chamber (8 mm × 14 mm inside, 1 mm walls). Exported as `nu4`; its
+  manifest also carries the analytic dimensions (`parameters`) for an exact rasteriser.
+
 ## Setup
 
 ### Prerequisites

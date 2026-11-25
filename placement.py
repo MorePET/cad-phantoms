@@ -108,3 +108,13 @@ def place(compartments, location):
     """
     return {name: (location * solid, material, fillable)
             for name, (solid, material, fillable) in compartments.items()}
+
+
+def nu4_placement(length=63.0):
+    """NEMA NU 4-2008 image-quality phantom, centred in the scanner.
+
+    The phantom's axis becomes world y and its centre the origin, so the field
+    of view (axial and transverse) is centred on it. The rods sit on the world
+    +y side: the CAD z = 0 base maps to world y = +length / 2.
+    """
+    return to_world((0.0, length / 2.0, 0.0))
